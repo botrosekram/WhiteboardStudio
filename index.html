@@ -3551,6 +3551,7 @@ function buildItem(S, it, par) {
   else if (it.type !== 'group') NOHAND = !autoHand(it);
   const outer = $('g', { 'data-id': it._id }, par);
   ITEMEL.set(it._id, outer);
+  if (it.opacity != null && it.opacity < 1) outer.style.opacity = Math.max(0, it.opacity);
   let pushed = 0;
   if (shift) { MAPS.push(t => t - shift); pushed++; }
   if (speed !== 1) { MAPS.push(t => at + (t - at) * speed); pushed++; }   // السرعة × : أكبر = أسرع
@@ -4795,6 +4796,7 @@ function renderProps() {
   h += F('يبدأ عند (ث)', num('p_start', startAbs, .05));
   if (!f.parent) h += F('الطبقة', `<select id="p_layer"><option value="scene" ${f.list !== PROJECT.overlay ? 'selected' : ''}>مع المشهد (تتأثر بالانتقالات)</option><option value="behind" ${f.list === PROJECT.overlay ? 'selected' : ''}>📌 ثابتة على الفيديو كله (لا تتأثر بالانتقالات)</option></select>`);
   if (it.behind) h += F('يختفي عند (ث)', num('p_until', it.fadeOut ? r2(it.fadeOut[0]) : '', .05));
+  h += F('الشفافية', `<input type="range" id="p_opac" min="5" max="100" step="5" value="${Math.round((it.opacity ?? 1) * 100)}" style="flex:1"><span class="muted" id="p_opacv" style="min-width:36px;text-align:center">${Math.round((it.opacity ?? 1) * 100)}%</span>`);
   h += F('السرعة ×', num('p_speed', it.speed || 1, .1));
   if (['text', 'path', 'underline', 'trail', 'image'].includes(it.type)) h += F(it.type === 'image' ? 'مدة الظهور' : 'مدة الرسم (ث)', num('p_dur', it.type === 'image' ? (it.revealDur || 1.4) : (it.dur ?? (it.type === 'trail' ? 1 : .7)), .05));
   if (!hasKeys) h += `<div class="grid2">${F('X', num('p_x', it.x || 0))}${F('Y', num('p_y', it.y || 0))}${F('حجم', num('p_scale', it.scale ?? 1, .05))}${F('دوران', num('p_rot', it.rot || 0))}</div>`;
@@ -4881,6 +4883,8 @@ function bindItemProps(it, f) {
   const $i = id => Q('#' + id);
   const on = (id, fn, evt = 'change') => { const e = $i(id); if (e) e.addEventListener(evt, () => { fn(e); commit(); }); };
   on('p_name', e => it.name = e.value);
+  { const po = $i('p_opac'); if (po) po.addEventListener('input', () => { const v = $i('p_opacv'); if (v) v.textContent = po.value + '%'; }); }
+  on('p_opac', e => { const v = +e.value / 100; if (v >= 1) delete it.opacity; else it.opacity = v; });
   on('p_until', e => { it.fadeOut = [Math.max((it.at || 0) + .2, +e.value), (it.fadeOut || [0, .3])[1]]; });
   { const pl = $i('p_layer'); if (pl) pl.addEventListener('change', () => {
     const v = pl.value, inOv = f.list === PROJECT.overlay, base = f.scene ? (f.scene.shift || 0) : 0, sc0 = PROJECT.scenes[selScene] || f.scene;
@@ -6149,6 +6153,7 @@ Q('#bFont').onclick = () => openFontDialog();
   function enter() {
     body.classList.add('mob');
     $('#left').prepend(hl); $('#right').prepend(hr);
+    { const tb = $('#tlBar'), u = $('#bUndo'), r = $('#bRedo'); if (tb && u && r) { tb.prepend(r); tb.prepend(u); } }
     bar.innerHTML = '';
     ORDER.forEach(id => {
       if (id === '|') { const d = document.createElement('div'); d.className = 'mdiv'; bar.appendChild(d); }
@@ -6169,6 +6174,7 @@ Q('#bFont').onclick = () => openFontDialog();
       const key = id; if (orig[key]) b.innerHTML = orig[key].html;
       top.insertBefore(b, $('#bUndo'));
     });
+    { const u = $('#bUndo'), r = $('#bRedo'), e = $('#bExport'); if (u && r) { top.insertBefore(u, e); top.insertBefore(r, e); } }
     bar.innerHTML = '';
   }
   function orient() { body.classList.toggle('land', innerWidth > innerHeight); setTimeout(() => { try { fitHost(); } catch (e) { } window.dispatchEvent(new Event('resize')); }, 60); }
